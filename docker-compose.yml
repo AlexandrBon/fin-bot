@@ -1,0 +1,21 @@
+version: '3.5'
+
+services:
+
+  db:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: 21184
+
+  bot:
+    image: fin_bot
+    environment:
+      CREATE_USER_INFO_TABLE: "no"
+      CREATE_USER_HISTORY_TABLE: "no"
+      TOKEN: 5808047150:AAGygYNLbC-GBhxgu80CItF7BYMbYhGmBCg
+      HOST: db
+      PORT: 5432
+      USER: postgres
+      PASSWORD: 21184
+      DBNAME: postgres
+      SSLMODE: disable
