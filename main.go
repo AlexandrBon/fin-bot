@@ -15,6 +15,21 @@ func main() {
 	}
 
 	finRepo, err := repo.New()
+	if os.Getenv("CREATE_USER_INFO_TABLE") == "yes" {
+
+		err := finRepo.CreateUserInfoTable()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if os.Getenv("CREATE_USER_HISTORY_TABLE") == "yes" {
+		err := finRepo.CreateUserHistoryTable()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if err != nil {
 		log.Fatal("repo.New() failed, result: ", err)
 	}

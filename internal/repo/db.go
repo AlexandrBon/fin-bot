@@ -33,6 +33,47 @@ func New() (app.Repository, error) {
 	return &Repo{db: db}, nil
 }
 
+func (r *Repo) AddUser(chatID int64) error {
+	query := `
+	INSERT INTO user_info(chat_id, balance) values ($1, 0)
+	`
+
+	if _, err := r.db.Exec(query, chatID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) CreateUserHistoryTable() error {
+	query := `
+	CREATE TABLE user_history(
+	    chat_id INT REFERENCES user_info(chat_id),
+	    data    text[]
+	);
+	`
+
+	if _, err := r.db.Exec(query); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repo) AddToHistory(chatID int64, data string) error {
+	query := `
+	UPDATE user_history
+	SET data = array_append(data, $1)
+	WHERE chat_id = $2;
+	`
+
+	if _, err := r.db.Exec(query, data, chatID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Repo) CreateUserInfoTable() error {
 	query := `
 	CREATE TABLE user_info(
@@ -58,6 +99,18 @@ func (r *Repo) UpdateBalance(chatID int64, updatedBalance int64) error {
 	}
 
 	return nil
+}
+
+func (r *Repo) UserExists(chatID int64) (bool, error) {
+	query := `
+	SELECT chat_id FROM user_info WHERE chat_id = $1;
+	`
+	rows, err := r.db.Query(query, chatID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	return rows.Next(), nil
 }
 
 func (r *Repo) GetBalance(chatID int64) (int64, error) {

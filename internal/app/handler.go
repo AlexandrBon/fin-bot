@@ -17,7 +17,7 @@ const (
 	CANCELED = -1
 	CONTINUE = 0
 
-	EMPTY_STATE = ""
+	EmptyState = ""
 )
 
 var (
@@ -44,7 +44,7 @@ func ClearUserState(chatID int64) {
 	if !ok {
 		return
 	}
-	value.state = EMPTY_STATE
+	value.state = EmptyState
 	UserStates[chatID] = value
 }
 
@@ -57,18 +57,19 @@ func HandleUpdate(a App, upd tgbotapi.Update) {
 	cmd := splitText[0]
 
 	us, ok := UserStates[upd.Message.Chat.ID]
-	if ok && us.state != EMPTY_STATE { // тут проработать несколько команд одновременной от 1 юзера
-		if strings.HasPrefix(cmd, "/") {
+	if ok && us.state != EmptyState { // тут проработать несколько команд одновременной от 1 юзера
+		if strings.HasPrefix(cmd, "/") && cmd != "/cancel" {
 			a.SendMessage(upd.Message.Chat.ID, "You have not completed the previous command. \n"+
 				"Enter /cancel to cancel it, or follow the instructions for using the command")
+		} else {
+			us.operationStateCh <- CONTINUE
+			us.message <- upd.Message.Text
 		}
-		us.operationStateCh <- CONTINUE
-		us.message <- upd.Message.Text
 	}
 
 	switch cmd {
 	case "/start":
-		a.Start(upd.Message.Chat.ID)
+		go a.Start(upd.Message.Chat.ID)
 	case "/topup_balance":
 		if len(splitText) != 2 {
 			a.SendMessage(upd.Message.Chat.ID, "Usage: /topup_balance {amount of rubles}. "+
@@ -81,7 +82,7 @@ func HandleUpdate(a App, upd tgbotapi.Update) {
 			return
 		}
 		ChangeUserState(upd.Message.Chat.ID, cmd)
-		a.TopUpBalance(upd.Message.Chat.ID, value)
+		go a.TopUpBalance(upd.Message.Chat.ID, value)
 	case "/buy":
 		n := len(splitText)
 		value, err := strconv.ParseInt(splitText[n-1], 10, 64)
@@ -93,20 +94,12 @@ func HandleUpdate(a App, upd tgbotapi.Update) {
 			return
 		}
 		ChangeUserState(upd.Message.Chat.ID, cmd)
-		go a.Buy(upd.Message.Chat.ID, strings.Join(splitText[1:n-1], " "), value)
-	case "/get_history":
-		if len(splitText) != 2 {
-			a.SendMessage(upd.Message.Chat.ID, "Usage: /get_history {amount of days}. For example: /get_history 7")
-			return
-		}
-		value, err := strconv.ParseInt(splitText[1], 10, 64)
-		if err != nil || value <= 0 {
-			a.SendMessage(upd.Message.Chat.ID, "Price can only be positive. Try again.")
-			return
-		}
-		ChangeUserState(upd.Message.Chat.ID, cmd)
-		go a.GetHistory(upd.Message.Chat.ID, value)
+		go a.Buy(upd.Message.Chat.ID, strings.TrimSpace(strings.Join(splitText[1:n-1], " ")), value)
+	case "/get_balance":
+		go a.GetBalance(upd.Message.Chat.ID)
 	case "/cancel":
-		us.operationStateCh <- CANCELED
+		if us.state != "" {
+			us.operationStateCh <- CANCELED
+		}
 	}
 }
