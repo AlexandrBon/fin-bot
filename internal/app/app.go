@@ -154,7 +154,7 @@ func (fb *FinancialApp) Buy(chatID int64, name string, value int64) {
 			if val == CONTINUE {
 				curBalance, _ := fb.repo.GetBalance(chatID)
 
-				curBalance += value
+				curBalance -= value
 				err := fb.repo.UpdateBalance(chatID, curBalance)
 				if err != nil {
 					finalMsg = FailedMessage
